@@ -10,28 +10,25 @@ class SeismicPrestack:
         self.dt_synt = 0.004
         self.dx_synt = 1
    
-    def readPartOrig (self, tr1, tr2, time1, time2):
+    def getPartOrig (self, tr1, tr2, time1, time2):
+        tr1 = int (tr1)
+        tr2 = int (tr2)
         t1 = int(time1/self.dt) 
         t2 = int(time2/self.dt) 
         tr2 = min (tr2, len (self.stream.traces))
         t2 = min (t2, self.nsamp)
         
-        data = []
-        for tr in range (tr1, tr2):
-            d = self.stream.traces[tr].data
-            data.append (d[t1:t2])
-            
-        data = np.array(data)
-        return data
+        return self.data[tr1:tr2, t1:t2]
         
-    def readPart (self, tr1, tr2, time1, time2):
+    def getPart (self, tr1, tr2, time1, time2):
         tr2 = min (tr2, len (self.stream.traces))
         time2 = min (time2, self.dt * self.nsamp)
     
-        data = self.readPartOrig (tr1, tr2, time1, time2).T
+        data = self.getPartOrig (tr1, tr2, time1, time2).T
         from scipy import interpolate
         x = np.arange(tr1, tr2, 1)
         y = np.arange(time1, time2, self.dt)
+              
         xx, yy = np.meshgrid(x, y)
         f = interpolate.interp2d(x, y, data, kind='cubic')
         
@@ -39,6 +36,36 @@ class SeismicPrestack:
         ynew = np.arange(time1, time2, self.dt_synt)
         data_new = f(xnew, ynew)
         return data_new.T
+        
+    def readGather (self):
+        self.data = np.stack(t.data for t in self.stream.traces)
+        
+    def readGatherParts (self, dx, dt):
+        dx = min (dx, len (self.stream.traces))
+        dt = min (dt, self.dt * self.nsamp)
+        
+        self.readGather()
+        tmax = self.nsamp*self.dt
+        xmax = len (self.data)
+        parts = []
+        for x in np.arange(0,xmax-dx/4.,dx/2):
+            xend = x + dx
+            if xend > xmax:
+                if (xend - xmax) > dx/4.:
+                    continue
+                x = xmax - dx
+                xend = xmax
+                
+            for t in np.arange(0,tmax-dt/4.,dt/2):
+                tend = t + dt
+                if tend > tmax:
+                    if (tend - tmax) > dt/4.:
+                        continue
+                    t = tmax - dt
+                    tend = tmax
+                    
+                parts.append(self.getPart (x, xend, t, tend))
+        return parts
         
     @staticmethod
     def spectrum(signal, taper = True):
