@@ -94,6 +94,7 @@ class SeismicPrestack:
         
         from scipy.misc import toimage
         im = toimage(data)
+        im = im.resize((256,256))
         return im
     
     @staticmethod
