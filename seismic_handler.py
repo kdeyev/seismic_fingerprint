@@ -24,16 +24,36 @@ class SeismicPrestack:
         tr2 = min (tr2, len (self.stream.traces))
         time2 = min (time2, self.dt * self.nsamp)
     
-        data = self.getPartOrig (tr1, tr2, time1, time2).T
+        data = self.getPartOrig (tr1, tr2, time1, time2)
         from scipy import interpolate
         x = np.arange(tr1, tr2, 1)
-        y = np.arange(time1, time2, self.dt)
-              
-        xx, yy = np.meshgrid(x, y)
-        f = interpolate.interp2d(x, y, data, kind='cubic')
+        y = [time1 + t for t in range (data.shape[1])]
+        
+        if len(x) != data.shape[0] or len(y) != data.shape[1]:
+            print ("len(x) != data.shape[0] or len(y) != data.shape[1]")
+            print (len(x), len(y), data.shape)
+            exit (0)
+            
+        return data
+        from scipy.interpolate import RegularGridInterpolator
+        my_interpolating_function = RegularGridInterpolator((x, y), data)
         
         xnew = np.arange(tr1, tr2, self.dx_synt)
         ynew = np.arange(time1, time2, self.dt_synt)
+        
+        pts = []
+        for tr in xnew:
+            for t in ynew:
+                pts.append ([tr, t])
+                #print (tr, t, my_interpolating_function([tr, t]))
+                
+        
+        interp = my_interpolating_function(pts)
+        return interp.reshape ((len(xnew), len(ynew)))
+        
+        xx, yy = np.meshgrid(x, y)
+        f = interpolate.interp2d(xx, yy, data, kind='cubic')
+        
         data_new = f(xnew, ynew)
         return data_new.T
         
@@ -67,6 +87,15 @@ class SeismicPrestack:
                 parts.append(self.getPart (x, xend, t, tend))
         return parts
         
+    @staticmethod
+    def convert_to_image (data):
+        import numpy as np
+        data = data * 255 / np.max(data)
+        
+        from scipy.misc import toimage
+        im = toimage(data)
+        return im
+    
     @staticmethod
     def spectrum(signal, taper = True):
         windowed = signal
@@ -110,21 +139,46 @@ class SeismicPrestack:
         
     @staticmethod
     def plot(data):
+        fig = plt.figure(figsize=(16, 8))
+        ax = fig.add_subplot(111)
+
+        # How to remove decorations from matplotlib: https://stackoverflow.com/questions/38411226/matplotlib-get-clean-plot-remove-all-decorations
+        #ax.set_axis_off()
+
         data = data.T
         vm = np.percentile(data, 99)
-        imparams = {'interpolation': 'none',
+        imparams = {
+                    #'interpolation': 'none',
                     'cmap': "gray",
                     'vmin': -vm,
                     'vmax': vm,
                     'aspect': 'auto'
                     }
         plt.imshow(data, **imparams)
-        plt.colorbar()
-        plt.show()
-        return
-    
+        #plt.colorbar()
+        #plt.show()
+        return plt
+
+    @staticmethod
+    def plot_spec(data):
+        fig = plt.figure(figsize=(16, 8))
+        ax = fig.add_subplot(111)
+            
+        # How to remove decorations from matplotlib: https://stackoverflow.com/questions/38411226/matplotlib-get-clean-plot-remove-all-decorations
+        #ax.set_axis_off()
+
+        imparams = {
+                    #'interpolation': 'none',
+                    'cmap': "gray",
+                    'aspect': 'auto'
+                    }
+        plt.imshow(data, **imparams)
+        #plt.colorbar()
+        #plt.show()
+        return plt
+
+        
     def wiggle_plot(self, data,
-                    ax=None,
                     skip=1,
                     perc=99.0,
                     gain=1.0,
@@ -133,12 +187,11 @@ class SeismicPrestack:
                     lw=0.2,
                     ):
                     
-        if ax is None:
-            fig = plt.figure(figsize=(16, 8))
-            ax = fig.add_subplot(111)
+        fig = plt.figure(figsize=(16, 8))
+        ax = fig.add_subplot(111)
             
         # How to remove decorations from matplotlib: https://stackoverflow.com/questions/38411226/matplotlib-get-clean-plot-remove-all-decorations
-        ax.set_axis_off()
+        #ax.set_axis_off()
         plt.gca().invert_yaxis()
         
         tbasis = np.arange(0, len(data[0]) * self.dt, self.dt)
@@ -162,4 +215,4 @@ class SeismicPrestack:
                              facecolor=rgba,
                              lw=0,
                              )
-        return ax
+        return plt
