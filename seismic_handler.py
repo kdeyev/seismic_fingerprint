@@ -2,13 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class SeismicPrestack:
-    def __init__(self, filename):
+    def __init__(self, filename, needToAddNoise):
         from obspy.io.segy.segy import _read_segy
         self.stream = _read_segy(filename, unpack_headers=True)
         self.dt = self.stream.binary_file_header.sample_interval_in_microseconds/1000000
         self.nsamp = len (self.stream.traces[0].data)
         self.dt_synt = 0.004
         self.dx_synt = 1
+        self.needToAddNoise = needToAddNoise
         
     def getHeaders (self):
         return [k for k in self.stream.traces[0].header.__dict__]
@@ -45,27 +46,27 @@ class SeismicPrestack:
             exit (0)
             
         return data
-        from scipy.interpolate import RegularGridInterpolator
-        my_interpolating_function = RegularGridInterpolator((x, y), data)
-        
-        xnew = np.arange(tr1, tr2, self.dx_synt)
-        ynew = np.arange(time1, time2, self.dt_synt)
-        
-        pts = []
-        for tr in xnew:
-            for t in ynew:
-                pts.append ([tr, t])
-                #print (tr, t, my_interpolating_function([tr, t]))
-                
-        
-        interp = my_interpolating_function(pts)
-        return interp.reshape ((len(xnew), len(ynew)))
-        
-        xx, yy = np.meshgrid(x, y)
-        f = interpolate.interp2d(xx, yy, data, kind='cubic')
-        
-        data_new = f(xnew, ynew)
-        return data_new.T
+#        from scipy.interpolate import RegularGridInterpolator
+#        my_interpolating_function = RegularGridInterpolator((x, y), data)
+#        
+#        xnew = np.arange(tr1, tr2, self.dx_synt)
+#        ynew = np.arange(time1, time2, self.dt_synt)
+#        
+#        pts = []
+#        for tr in xnew:
+#            for t in ynew:
+#                pts.append ([tr, t])
+#                #print (tr, t, my_interpolating_function([tr, t]))
+#                
+#        
+#        interp = my_interpolating_function(pts)
+#        return interp.reshape ((len(xnew), len(ynew)))
+#        
+#        xx, yy = np.meshgrid(x, y)
+#        f = interpolate.interp2d(xx, yy, data, kind='cubic')
+#        
+#        data_new = f(xnew, ynew)
+#        return data_new.T
         
     def readGather (self, gather_value):
         index = self.getHeaderIndex(gather_value)
@@ -73,6 +74,8 @@ class SeismicPrestack:
         for i in index:
             self.data.append(self.stream.traces[i].data)
         self.data = np.array(self.data)
+        if self.needToAddNoise:
+            self.addNoise()
         
     def readGatherParts (self, gather_value, dx, dt):
         dx = min (dx, len (self.stream.traces))
@@ -156,8 +159,11 @@ class SeismicPrestack:
         freq = freq - np.amax(freq)
         return freq
     
+    def addNoise (self):
+        self.data = self.addNoiseStatic(self.data)
+        
     @staticmethod 
-    def addNoise (data):
+    def addNoiseStatic (data):
         import numpy as np
         data_new = []
         for t in data:
@@ -174,7 +180,7 @@ class SeismicPrestack:
                 if i > lhi:
                     sc = 1
                 
-                f [i] *= 1 + sc*100
+                f [i] *= 1 + sc*1000
             
             t_new = np.fft.irfft(f)
             data_new.append (t_new)
