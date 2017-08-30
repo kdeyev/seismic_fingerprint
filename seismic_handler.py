@@ -4,11 +4,21 @@ import matplotlib.pyplot as plt
 class SeismicPrestack:
     def __init__(self, filename):
         from obspy.io.segy.segy import _read_segy
-        self.stream = _read_segy(filename)
+        self.stream = _read_segy(filename, unpack_headers=True)
         self.dt = self.stream.binary_file_header.sample_interval_in_microseconds/1000000
         self.nsamp = len (self.stream.traces[0].data)
         self.dt_synt = 0.004
         self.dx_synt = 1
+        
+    def getHeaders (self):
+        return [k for k in self.stream.traces[0].header.__dict__]
+    
+    def getHeaderVals (self, header):
+        self.header_vals = [t.header.__dict__[header] for t in self.stream.traces]        
+        return np.unique (self.header_vals)
+        
+    def getHeaderIndex (self, v) : 
+        return [index for index, value in enumerate(self.header_vals) if value == v]
    
     def getPartOrig (self, tr1, tr2, time1, time2):
         tr1 = int (tr1)
@@ -57,14 +67,18 @@ class SeismicPrestack:
         data_new = f(xnew, ynew)
         return data_new.T
         
-    def readGather (self):
-        self.data = np.stack(t.data for t in self.stream.traces)
+    def readGather (self, gather_value):
+        index = self.getHeaderIndex(gather_value)
+        self.data = []
+        for i in index:
+            self.data.append(self.stream.traces[i].data)
+        self.data = np.array(self.data)
         
-    def readGatherParts (self, dx, dt):
+    def readGatherParts (self, gather_value, dx, dt):
         dx = min (dx, len (self.stream.traces))
         dt = min (dt, self.dt * self.nsamp)
         
-        self.readGather()
+        self.readGather(gather_value)
         tmax = self.nsamp*self.dt
         xmax = len (self.data)
         parts = []
@@ -84,7 +98,10 @@ class SeismicPrestack:
                     t = tmax - dt
                     tend = tmax
                     
-                parts.append(self.getPart (x, xend, t, tend))
+                d = self.getPart (x, xend, t, tend)
+                if np.amax(d) == np.amin(d):
+                    continue
+                parts.append(d)
         return parts
         
     @staticmethod
@@ -138,7 +155,31 @@ class SeismicPrestack:
         freq = 20 * np.log10(freq)
         freq = freq - np.amax(freq)
         return freq
-        
+    
+    @staticmethod 
+    def addNoise (data):
+        import numpy as np
+        data_new = []
+        for t in data:
+            f = np.fft.rfft(t)
+            l = len (f)
+            llow = int(l*0.5);
+            lhi = int(l*0.75)
+            for i in range (l):
+                
+                if i < llow:
+                    sc = 0
+                if i in range(llow, lhi):
+                    sc = (i - llow)/(lhi - llow)
+                if i > lhi:
+                    sc = 1
+                
+                f [i] *= 1 + sc*100
+            
+            t_new = np.fft.irfft(f)
+            data_new.append (t_new)
+        return np.array(data_new)
+    
     @staticmethod
     def plot(data):
         fig = plt.figure(figsize=(16, 8))
