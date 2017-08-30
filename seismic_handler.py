@@ -88,13 +88,14 @@ class SeismicPrestack:
         return parts
         
     @staticmethod
-    def convert_to_image (data):
+    def convert_to_image (data, shape = None):
         import numpy as np
         data = data * 255 / np.max(data)
         
         from scipy.misc import toimage
         im = toimage(data)
-        im = im.resize((256,256))
+        if shape != None:
+            im = im.resize(shape)
         return im
     
     @staticmethod
