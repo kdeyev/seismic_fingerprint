@@ -21,24 +21,26 @@ class SeismicPrestack:
     def getHeaderIndex (self, v) : 
         return [index for index, value in enumerate(self.header_vals) if value == v]
    
-    def getPartOrig (self, tr1, tr2, time1, time2):
-        tr1 = int (tr1)
-        tr2 = int (tr2)
-        t1 = int(time1/self.dt) 
-        t2 = int(time2/self.dt) 
+    def getPartOrig (self, tr1, tr2, s1, s2):
+#        tr1 = int (tr1)
+#        tr2 = int (tr2)
+#        t1 = int(time1/self.dt) 
+#        t2 = int(time2/self.dt) 
+#        tr2 = min (tr2, len (self.stream.traces))
+#        t2 = min (t2, self.nsamp)
+
         tr2 = min (tr2, len (self.stream.traces))
-        t2 = min (t2, self.nsamp)
+        s2 = min (s2, self.nsamp)        
+        return self.data[tr1:tr2, s1:s2]
         
-        return self.data[tr1:tr2, t1:t2]
-        
-    def getPart (self, tr1, tr2, time1, time2):
+    def getPart (self, tr1, tr2, s1, s2):
         tr2 = min (tr2, len (self.stream.traces))
-        time2 = min (time2, self.dt * self.nsamp)
+        s2 = min (s2, self.nsamp)
     
-        data = self.getPartOrig (tr1, tr2, time1, time2)
+        data = self.getPartOrig (tr1, tr2, s1, s2)
         from scipy import interpolate
-        x = np.arange(tr1, tr2, 1)
-        y = [time1 + t for t in range (data.shape[1])]
+        x = range(tr1, tr2, 1)
+        y = range(s1, s2, 1)
         
         if len(x) != data.shape[0] or len(y) != data.shape[1]:
             print ("len(x) != data.shape[0] or len(y) != data.shape[1]")
@@ -77,34 +79,42 @@ class SeismicPrestack:
         if self.needToAddNoise:
             self.addNoise()
         
-    def readGatherParts (self, gather_value, dx, dt):
-        dx = min (dx, len (self.stream.traces))
-        dt = min (dt, self.dt * self.nsamp)
+    def readGatherParts (self, gather_value, xwin, twin):
+        xwin = min (xwin, len (self.stream.traces))
+        twin = min (twin, self.dt * self.nsamp)
+        trwin = int (xwin)
+        swin = int (twin/self.dt)
         
         self.readGather(gather_value)
-        tmax = self.nsamp*self.dt
+        smax = self.nsamp
         xmax = len (self.data)
         parts = []
-        for x in np.arange(0,xmax-dx/4.,dx/2):
-            xend = x + dx
+        for x in range(0,int(xmax-trwin/4.),int(trwin/2)):
+            xend = x + trwin
             if xend > xmax:
-                if (xend - xmax) > dx/4.:
+                if (xend - xmax) > int(trwin/4.):
                     continue
-                x = xmax - dx
+                x = xmax - trwin
                 xend = xmax
                 
-            for t in np.arange(0,tmax-dt/4.,dt/2):
-                tend = t + dt
-                if tend > tmax:
-                    if (tend - tmax) > dt/4.:
+            for s in range(0,int(smax-swin/4.),int(swin/2)):
+                send = s + swin
+                if send > smax:
+                    if (send - smax) > int(swin/4.):
                         continue
-                    t = tmax - dt
-                    tend = tmax
+                    s = smax - swin
+                    send = smax
                     
-                d = self.getPart (x, xend, t, tend)
+                d = self.getPart (x, xend, s, send)
                 if np.amax(d) == np.amin(d):
                     continue
                 parts.append(d)
+                
+        sh = parts[0].shape
+        for data in parts:
+            if sh != data.shape:
+                throw ('wrong shapes')
+            
         return parts
         
     @staticmethod
