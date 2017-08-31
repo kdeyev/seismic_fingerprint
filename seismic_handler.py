@@ -180,7 +180,7 @@ class SeismicPrestack:
                 if i > lhi:
                     sc = 1
                 
-                f [i] *= 1 + sc*1000
+                f [i] *= 1 + sc*10
             
             t_new = np.fft.irfft(f)
             data_new.append (t_new)
