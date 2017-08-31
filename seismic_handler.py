@@ -117,7 +117,7 @@ class SeismicPrestack:
         for i in index:
             self.data.append(self.stream.traces[i].data)
         self.data = np.array(self.data)
-        if self.processor:
+        if self.processor != None:
             self.processor.run(self)
         
     def readGatherParts (self, gather_value, xwin, twin):
