@@ -1,15 +1,56 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+def convert_to_image (data, shape = None):
+    import numpy as np
+    data = data * 255 / np.max(data)
+    
+    from scipy.misc import toimage
+    im = toimage(data)
+    if shape != None:
+        im = im.resize(shape)
+    return im
+
+        
+class FreqNoiser:
+    def __init__(self):
+        pass
+        
+    def run (self, handler):
+        handler.data = self.addNoiseStatic(handler.data)
+        
+    @staticmethod 
+    def addNoiseStatic (data):
+        import numpy as np
+        data_new = []
+        for t in data:
+            f = np.fft.rfft(t)
+            l = len (f)
+            llow = int(l*0.5);
+            lhi = int(l*0.75)
+            for i in range (l):
+                if i < llow:
+                    sc = 0
+                if i in range(llow, lhi):
+                    sc = (i - llow)/(lhi - llow)
+                if i > lhi:
+                    sc = 1
+                
+                f [i] *= 1 + sc*10
+            
+            t_new = np.fft.irfft(f)
+            data_new.append (t_new)
+        return np.array(data_new)
+    
 class SeismicPrestack:
-    def __init__(self, filename, needToAddNoise):
+    def __init__(self, filename, processor = None):
         from obspy.io.segy.segy import _read_segy
         self.stream = _read_segy(filename, unpack_headers=True)
         self.dt = self.stream.binary_file_header.sample_interval_in_microseconds/1000000
         self.nsamp = len (self.stream.traces[0].data)
         self.dt_synt = 0.004
         self.dx_synt = 1
-        self.needToAddNoise = needToAddNoise
+        self.processor = processor
         
     def getHeaders (self):
         return [k for k in self.stream.traces[0].header.__dict__]
@@ -76,8 +117,8 @@ class SeismicPrestack:
         for i in index:
             self.data.append(self.stream.traces[i].data)
         self.data = np.array(self.data)
-        if self.needToAddNoise:
-            self.addNoise()
+        if self.processor:
+            self.processor.run(self)
         
     def readGatherParts (self, gather_value, xwin, twin):
         xwin = min (xwin, len (self.stream.traces))
@@ -116,18 +157,7 @@ class SeismicPrestack:
                 throw ('wrong shapes')
             
         return parts
-        
-    @staticmethod
-    def convert_to_image (data, shape = None):
-        import numpy as np
-        data = data * 255 / np.max(data)
-        
-        from scipy.misc import toimage
-        im = toimage(data)
-        if shape != None:
-            im = im.resize(shape)
-        return im
-    
+            
     @staticmethod
     def spectrum(signal, taper = True):
         windowed = signal
@@ -168,34 +198,7 @@ class SeismicPrestack:
         freq = 20 * np.log10(freq)
         freq = freq - np.amax(freq)
         return freq
-    
-    def addNoise (self):
-        self.data = self.addNoiseStatic(self.data)
         
-    @staticmethod 
-    def addNoiseStatic (data):
-        import numpy as np
-        data_new = []
-        for t in data:
-            f = np.fft.rfft(t)
-            l = len (f)
-            llow = int(l*0.5);
-            lhi = int(l*0.75)
-            for i in range (l):
-                
-                if i < llow:
-                    sc = 0
-                if i in range(llow, lhi):
-                    sc = (i - llow)/(lhi - llow)
-                if i > lhi:
-                    sc = 1
-                
-                f [i] *= 1 + sc*10
-            
-            t_new = np.fft.irfft(f)
-            data_new.append (t_new)
-        return np.array(data_new)
-    
     @staticmethod
     def plot(data):
         fig = plt.figure(figsize=(16, 8))
