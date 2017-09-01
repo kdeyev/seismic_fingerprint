@@ -41,7 +41,48 @@ class FreqNoiser:
 			t_new = np.fft.irfft(f)
 			data_new.append (t_new)
 		return np.array(data_new)
-	
+
+		
+class BP:
+	def __init__(self, f1, f2, f3, f4, factor):
+		self.f1 = f1
+		self.f2 = f2
+		self.f3 = f3
+		self.f4 = f4
+		self.factor = factor
+		pass
+		
+	def run (self, handler):
+		handler.data = self.bp(handler.data)
+		
+	def bp (self, data):
+		import numpy as np
+		data_new = []
+		f = np.fft.rfft(data[0])
+		l = len (f)
+		f1 = int(l*self.f1)
+		f2 = int(l*self.f2)
+		f3 = int(l*self.f3)
+		f4 = int(l*self.f4)
+		for t in data:
+			f = np.fft.rfft(t)
+			for i in range (l):
+				
+				sc = 0
+				if i in range(f1, f2):
+					sc = (i - f1)/(f2 - f1)
+				if i in range(f2, f3):
+					sc = 1
+				if i in range(f3, f4):
+					sc = 1 - (i - f3)/(f4 - f3)
+					
+				f [i] *= 1 + sc*self.factor
+			
+			t_new = np.fft.irfft(f)
+			data_new.append (t_new)
+		return np.array(data_new)
+
+		
 class SeismicPrestack:
 	def __init__(self, filename, processor = None):
 		from obspy.io.segy.segy import _read_segy
