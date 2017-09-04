@@ -2,14 +2,93 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def convert_to_image (data, shape = None):
-	import numpy as np
-	data = data * 255 / np.max(data)
+	import numpy as np		
+	normalized = (data-np.min(data))/(np.max(data)-np.min(data))
+	data = normalized * 255
 	
 	from scipy.misc import toimage
 	im = toimage(data)
 	if shape != None:
 		im = im.resize(shape)
 	return im
+			
+def spectrum(signal, taper = True):
+	windowed = signal
+	if taper:
+		windowed = windowed * np.blackman(len(windowed))
+	a = abs(np.fft.rfft(windowed))
+
+	#db = 20 * np.log10(a)
+
+	return a
+
+def spectrogram (data):
+	spec_matrix = []
+	db_matrix = []
+	for i in range(len(data)):
+		a = spectrum(data[i], False)
+		spec_matrix.append (a)
+		db = 20 * np.log10(a)		 
+		db_matrix.append (db)
+
+	spec_matrix = np.array(spec_matrix)
+	db_matrix = db_matrix - np.amax(db_matrix)
+	db_matrix = np.nan_to_num(db_matrix)
+	return spec_matrix
+
+def fk (data):
+	#data = data*np.blackman(len(data[0]))
+	data = data.T
+	freq = np.fft.fft2(data)
+	freq = np.fft.fftshift(freq)
+	freq = freq[int(len(freq)/2):,:]
+
+	#print (np.fft.rfftfreq(freq.shape[0], self.dt_synt))
+	#print (np.fft.fftfreq(freq.shape[1], self.dx_synt))
+
+	freq = np.abs(freq)
+	#freq = 20 * np.log10(freq)
+	#freq = freq - np.amax(freq)
+	freq = np.nan_to_num(freq)
+	return freq
+
+def plot(data):
+	fig = plt.figure(figsize=(16, 8))
+	ax = fig.add_subplot(111)
+
+	# How to remove decorations from matplotlib: https://stackoverflow.com/questions/38411226/matplotlib-get-clean-plot-remove-all-decorations
+	#ax.set_axis_off()
+
+	data = data.T
+	vm = np.percentile(data, 99)
+	imparams = {
+		#'interpolation': 'none',
+		'cmap': "gray",
+		'vmin': -vm,
+		'vmax': vm,
+		'aspect': 'auto'
+	}
+	plt.imshow(data, **imparams)
+	#plt.colorbar()
+	#plt.show()
+	return plt
+
+def plot_spec(data):
+	fig = plt.figure(figsize=(16, 8))
+	ax = fig.add_subplot(111)
+
+	# How to remove decorations from matplotlib: https://stackoverflow.com/questions/38411226/matplotlib-get-clean-plot-remove-all-decorations
+	#ax.set_axis_off()
+
+	imparams = {
+		#'interpolation': 'none',
+		'cmap': "gray",
+		'aspect': 'auto'
+	}
+	plt.imshow(data, **imparams)
+	#plt.colorbar()
+	#plt.show()
+	return plt
 
 		
 class FreqNoiser:
@@ -198,88 +277,6 @@ class SeismicPrestack:
 				throw ('wrong shapes')
 			
 		return parts
-			
-	@staticmethod
-	def spectrum(signal, taper = True):
-		windowed = signal
-		if taper:
-			windowed = windowed * np.blackman(len(windowed))
-		a = abs(np.fft.rfft(windowed))
-
-		#db = 20 * np.log10(a)
-
-		return a
-
-	@staticmethod
-	def spectrogram (data):
-		spec_matrix = []
-		db_matrix = []
-		for i in range(len(data)):
-			a = SeismicPrestack.spectrum(data[i], False)
-			spec_matrix.append (a)
-			db = 20 * np.log10(a)		 
-			db_matrix.append (db)
-			
-		spec_matrix = np.array(spec_matrix)
-		db_matrix = db_matrix - np.amax(db_matrix)
-		return db_matrix
-
-	@staticmethod
-	def fk (data):
-		#data = data*np.blackman(len(data[0]))
-		data = data.T
-		freq = np.fft.fft2(data)
-		freq = np.fft.fftshift(freq)
-		freq = freq[int(len(freq)/2):,:]
-
-		#print (np.fft.rfftfreq(freq.shape[0], self.dt_synt))
-		#print (np.fft.fftfreq(freq.shape[1], self.dx_synt))
-
-		freq = np.abs(freq)
-		freq = 20 * np.log10(freq)
-		freq = freq - np.amax(freq)
-		return freq
-		
-	@staticmethod
-	def plot(data):
-		fig = plt.figure(figsize=(16, 8))
-		ax = fig.add_subplot(111)
-
-		# How to remove decorations from matplotlib: https://stackoverflow.com/questions/38411226/matplotlib-get-clean-plot-remove-all-decorations
-		#ax.set_axis_off()
-
-		data = data.T
-		vm = np.percentile(data, 99)
-		imparams = {
-					#'interpolation': 'none',
-					'cmap': "gray",
-					'vmin': -vm,
-					'vmax': vm,
-					'aspect': 'auto'
-					}
-		plt.imshow(data, **imparams)
-		#plt.colorbar()
-		#plt.show()
-		return plt
-
-	@staticmethod
-	def plot_spec(data):
-		fig = plt.figure(figsize=(16, 8))
-		ax = fig.add_subplot(111)
-			
-		# How to remove decorations from matplotlib: https://stackoverflow.com/questions/38411226/matplotlib-get-clean-plot-remove-all-decorations
-		#ax.set_axis_off()
-
-		imparams = {
-					#'interpolation': 'none',
-					'cmap': "gray",
-					'aspect': 'auto'
-					}
-		plt.imshow(data, **imparams)
-		#plt.colorbar()
-		#plt.show()
-		return plt
-
 		
 	def wiggle_plot(self, data,
 					skip=1,
