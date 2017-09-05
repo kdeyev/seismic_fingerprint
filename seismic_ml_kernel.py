@@ -148,7 +148,7 @@ def ci_multi (X_train, y_train, X_test, y_test, num_epochs = 200):
 	num_test = X_test[0].shape[0] # there are 10000 test examples in CIFAR-10
 	num_classes = np.unique(y_train).shape[0] # there are 10 image classes
 	
-	print ('num branches', len (X_train))
+	print ('number of vision models', len (X_train))
 	
 	batch_size = 32 # in each iteration, we consider 32 training examples at once
 	#num_epochs = 200 # we iterate 200 times over the entire training set
