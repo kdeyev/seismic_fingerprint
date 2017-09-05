@@ -34,7 +34,7 @@ def spectrogram (data):
 	spec_matrix = np.array(spec_matrix)
 	db_matrix = db_matrix - np.amax(db_matrix)
 	db_matrix = np.nan_to_num(db_matrix)
-	return spec_matrix
+	return db_matrix
 
 def fk (data):
 	#data = data*np.blackman(len(data[0]))
@@ -47,8 +47,8 @@ def fk (data):
 	#print (np.fft.fftfreq(freq.shape[1], self.dx_synt))
 
 	freq = np.abs(freq)
-	#freq = 20 * np.log10(freq)
-	#freq = freq - np.amax(freq)
+	freq = 20 * np.log10(freq)
+	freq = freq - np.amax(freq)
 	freq = np.nan_to_num(freq)
 	return freq
 
