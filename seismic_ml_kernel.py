@@ -198,7 +198,7 @@ def ci_multi_train (X_train, y_train, num_epochs = 20):
 	esCallBack = keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
 
 	classification_model.fit(X_train, Y_train, # Train the model using the training set...
-			  batch_size=batch_size, nb_epoch=num_epochs,
+			  batch_size=batch_size, epochs=num_epochs,
 			  verbose=1, validation_split=0.1, # ...holding out 10% of the data for validation
 			  callbacks=[tbCallBack, esCallBack])
 			  
