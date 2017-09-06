@@ -212,21 +212,33 @@ def create_dirs (images_dir, num_classes):
 		
 	return train_data_dir, validation_data_dir
 				
-def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = 'images/'):
+def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = 'outputs/images/'):
 	import numpy as np
 	import seismic_handler
-		
-	if images_dir != None:
-		train_data_dir, validation_data_dir = create_dirs(images_dir, len(noisers))
-			
-	handlers = [seismic_handler.SeismicPrestack(file_name, noiser) for noiser in noisers]
-	gather_keys = [handler.getHeaderVals (sorting_key) for handler in handlers]
+
 		
 	X_train = [[],[],[]]
 	y_train = []
 	X_test = [[],[],[]] 
 	y_test = []
 	  
+
+	import os
+	if os.path.exists('outputs/X_train0.npz'):
+		for i in range(len(X_train)): 
+			X_train[i] = np.load('outputs/X_train' + str(i) + '.npz')
+			X_test[i] = np.load('outputs/X_test' + str(i) + '.npz')
+		
+		y_train.append(np.load('outputs/y_train.npz'))
+		y_test.append(np.load('outputs/y_test.npz'))
+		
+		return (X_train, y_train), (X_test, y_test)
+	
+	if images_dir != None:
+		train_data_dir, validation_data_dir = create_dirs(images_dir, len(noisers))
+			
+	handlers = [seismic_handler.SeismicPrestack(file_name, noiser) for noiser in noisers]
+	gather_keys = [handler.getHeaderVals (sorting_key) for handler in handlers]
 	
 	counter = 0
 	nhandlers = len (handlers)
@@ -292,5 +304,11 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = '
 	if len(X_test[0]) != len(y_test):
 		print ('len(X_test) != len(y_test)')
 		return
-
+		
+	for i in range(len(X_train)): 
+		np.save('outputs/X_train' + str(i) + '.npz', X_train[i])
+		np.save('outputs/X_test' + str(i) + '.npz', X_test[i])
+	
+	np.save('outputs/y_train.npz', y_train)
+	np.save('outputs/y_test.npz', y_test)
 	return (X_train, y_train), (X_test, y_test)

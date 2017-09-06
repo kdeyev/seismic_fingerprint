@@ -107,6 +107,7 @@ def ci (X_train, y_train, X_test, y_test, num_epochs = 200):
 def ci_vision_model (X_train):
 	from keras.models import Model # basic class for specifying and training a neural network
 	from keras.layers import Input, Convolution2D, MaxPooling2D, Dense, Dropout, Flatten
+	import keras
 	
 	kernel_size = 3 # we will use 3x3 kernels throughout
 	pool_size = 2 # we will use 2x2 pooling throughout
@@ -133,43 +134,50 @@ def ci_vision_model (X_train):
 	flat = Flatten()(drop_2)
 
 	vision_model = Model(input=inp, output=flat) # To define a model, just specify its input and output layers
+	
+	keras.utils.plot_model(vision_model, to_file='outputs/vision_model.png')
+
 	vision_model_inp = inp
 	vision_model_out = vision_model (inp)
 	return vision_model_inp, vision_model_out
 	
 	
-def ci_multi (X_train, y_train, X_test, y_test, num_epochs = 200):
+def ci_multi_train (X_train, y_train, num_epochs = 20):
 	from keras.models import Model # basic class for specifying and training a neural network
 	from keras.layers import Input, Convolution2D, MaxPooling2D, Dense, Dropout, Flatten
 	from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
 	import numpy as np
 	import keras
-		
-	num_test = X_test[0].shape[0] # there are 10000 test examples in CIFAR-10
-	num_classes = np.unique(y_train).shape[0] # there are 10 image classes
 	
+	import os
+	if os.path.exists('outputs/classification_model.h5'):
+		print ('Model already exists')
+		classification_model = keras.models.load_model('outputs/classification_model.h5')
+		return classification_model
+	
+	
+	vision_model_inputs = []
+	vision_model_outputs = []
+	for i in range(len(X_train)):
+		X_train[i] = X_train[i].astype('float32') 
+		X_train[i] /= np.max(X_train[i]) # Normalise data to [0, 1] range
+		vision_model_inp, vision_model_out = ci_vision_model (X_train[i])
+		vision_model_inputs.append(vision_model_inp)
+		vision_model_outputs.append(vision_model_out)
+	
+	Y_train = np_utils.to_categorical(y_train, num_classes) # One-hot encode the labels
+	Y_test = np_utils.to_categorical(y_test, num_classes) # One-hot encode the labels
+			
 	print ('number of vision models', len (X_train))
+	
+	num_classes = np.unique(y_train).shape[0] # there are 10 image classes
 	
 	batch_size = 32 # in each iteration, we consider 32 training examples at once
 	#num_epochs = 200 # we iterate 200 times over the entire training set
 	hidden_size = 512 # the FC layer will have 512 neurons
 	drop_prob_2 = 0.5 # dropout in the FC layer with probability 0.5
-		
-	vision_model_inputs = []
-	vision_model_outputs = []
-	for i in range(len(X_train)):
-		X_train[i] = X_train[i].astype('float32') 
-		X_test[i] = X_test[i].astype('float32')
-		X_train[i] /= np.max(X_train[i]) # Normalise data to [0, 1] range
-		X_test[i]  /= np.max(X_train[i]) # Normalise data to [0, 1] range
-		vision_model_inp, vision_model_out = ci_vision_model (X_train[i])
-		vision_model_inputs.append(vision_model_inp)
-		vision_model_outputs.append(vision_model_out)
-		
+			
 	print ('Vision models are ready')
-
-	Y_train = np_utils.to_categorical(y_train, num_classes) # One-hot encode the labels
-	Y_test = np_utils.to_categorical(y_test, num_classes) # One-hot encode the labels
 	
 	concatenated_inp = keras.layers.concatenate(vision_model_outputs)	
 	hidden = Dense(hidden_size, activation='relu')(concatenated_inp)
@@ -186,12 +194,38 @@ def ci_multi (X_train, y_train, X_test, y_test, num_epochs = 200):
 
 	print ('Classification model compiled')
 	
+	keras.utils.plot_model(classification_model, to_file='outputs/classification_model.png')
+
+	tbCallBack = keras.callbacks.TensorBoard(log_dir='outputs/Graph', histogram_freq=0, write_graph=True, write_images=True)
+	esCallBack = keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+
 	classification_model.fit(X_train, Y_train, # Train the model using the training set...
 			  batch_size=batch_size, nb_epoch=num_epochs,
-			  verbose=1, validation_split=0.1) # ...holding out 10% of the data for validation
+			  verbose=1, validation_split=0.1, # ...holding out 10% of the data for validation
+			  callbacks=[tbCallBack, esCallBack])
 			  
-	print(classification_model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!
+	classification_model.save('outputs/classification_model.h5')  # creates a HDF5 file 'my_model.h5'
 
+def ci_multi_test (classification_model, X_test, y_test):
+	from keras.models import Model # basic class for specifying and training a neural network
+	from keras.layers import Input, Convolution2D, MaxPooling2D, Dense, Dropout, Flatten
+	from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
+	import numpy as np
+	import keras
+	
+	for i in range(len(X_test)):
+		X_test[i] = X_test[i].astype('float32')
+		X_test[i]  /= np.max(X_test[i]) # Normalise data to [0, 1] range
+	
+	
+	num_classes = np.unique(y_test).shape[0] # there are 10 image classes
+	Y_test = np_utils.to_categorical(y_test, num_classes) # One-hot encode the labels
+	
+	num_test = X_test[0].shape[0] # there are 10000 test examples in CIFAR-10
+	
+	batch_size = 32 # in each iteration, we consider 32 training examples at once
+
+	print(classification_model.evaluate(X_test, Y_test, verbose=2)) # Evaluate the trained model on the test set!
 	
 def ci_speed (X_train, y_train, X_test, y_test):
 	from keras.datasets import mnist # subroutines for fetching the MNIST dataset
@@ -276,6 +310,6 @@ def ci_speed (X_train, y_train, X_test, y_test):
 							nb_epoch=num_epochs,
 							validation_data=(X_val, Y_val),
 							verbose=1,
-							callbacks=[EarlyStopping(monitor='val_loss', patience=5)]) # adding early stopping
+							callbacks=[keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)]) # adding early stopping
 
 	print(model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!
