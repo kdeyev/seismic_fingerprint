@@ -47,7 +47,7 @@ def mn (X_train, y_train, X_test, y_test):
 	
 def ci (X_train, y_train, X_test, y_test, num_epochs = 200):
 	from keras.models import Model # basic class for specifying and training a neural network
-	from keras.layers import Input, Convolution2D, MaxPooling2D, Dense, Dropout, Flatten
+	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
 	from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
 	import numpy as np
 
@@ -62,6 +62,7 @@ def ci (X_train, y_train, X_test, y_test, num_epochs = 200):
 	drop_prob_1 = 0.25 # dropout after pooling with probability 0.25
 	drop_prob_2 = 0.5 # dropout in the FC layer with probability 0.5
 	hidden_size = 512 # the FC layer will have 512 neurons
+	kernel_shape = (kernel_size, kernel_size)
 
 	num_train, depth, height, width = X_train.shape # there are 50000 training examples in CIFAR-10 
 	num_test = X_test.shape[0] # there are 10000 test examples in CIFAR-10
@@ -78,13 +79,13 @@ def ci (X_train, y_train, X_test, y_test, num_epochs = 200):
 
 	inp = Input(shape=(depth, height, width)) # N.B. depth goes first in Keras!
 	# Conv [32] -> Conv [32] -> Pool (with dropout on the pooling layer)
-	conv_1 = Convolution2D(conv_depth_1, kernel_size, kernel_size, border_mode='same', activation='relu')(inp)
-	conv_2 = Convolution2D(conv_depth_1, kernel_size, kernel_size, border_mode='same', activation='relu')(conv_1)
+	conv_1 = Conv2D(conv_depth_1, kernel_shape, padding='same', activation='relu')(inp)
+	conv_2 = Conv2D(conv_depth_1, kernel_shape, padding='same', activation='relu')(conv_1)
 	pool_1 = MaxPooling2D(pool_size=(pool_size, pool_size))(conv_2)
 	drop_1 = Dropout(drop_prob_1)(pool_1)
 	# Conv [64] -> Conv [64] -> Pool (with dropout on the pooling layer)
-	conv_3 = Convolution2D(conv_depth_2, kernel_size, kernel_size, border_mode='same', activation='relu')(drop_1)
-	conv_4 = Convolution2D(conv_depth_2, kernel_size, kernel_size, border_mode='same', activation='relu')(conv_3)
+	conv_3 = Conv2D(conv_depth_2, kernel_shape, padding='same', activation='relu')(drop_1)
+	conv_4 = Conv2D(conv_depth_2, kernel_shape, padding='same', activation='relu')(conv_3)
 	pool_2 = MaxPooling2D(pool_size=(pool_size, pool_size))(conv_4)
 	drop_2 = Dropout(drop_prob_1)(pool_2)
 	# Now flatten to 1D, apply FC -> ReLU (with dropout) -> softmax
@@ -104,9 +105,9 @@ def ci (X_train, y_train, X_test, y_test, num_epochs = 200):
 			  verbose=1, validation_split=0.1) # ...holding out 10% of the data for validation
 	print(model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!
 
-def ci_vision_model (X_train):
+def ci_vision_model (X_train, num):
 	from keras.models import Model # basic class for specifying and training a neural network
-	from keras.layers import Input, Convolution2D, MaxPooling2D, Dense, Dropout, Flatten
+	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
 	import keras
 	
 	kernel_size = 3 # we will use 3x3 kernels throughout
@@ -114,6 +115,7 @@ def ci_vision_model (X_train):
 	conv_depth_1 = 32 # we will initially have 32 kernels per conv. layer...
 	conv_depth_2 = 64 # ...switching to 64 after the first pooling layer
 	drop_prob_1 = 0.25 # dropout after pooling with probability 0.25
+	kernel_shape = (kernel_size, kernel_size)
 	
 	num_train, depth, height, width = X_train.shape # there are 50000 training examples in CIFAR-10 
 	
@@ -121,13 +123,13 @@ def ci_vision_model (X_train):
 	
 	inp = Input(shape=(depth, height, width)) # N.B. depth goes first in Keras!
 	# Conv [32] -> Conv [32] -> Pool (with dropout on the pooling layer)
-	conv_1 = Convolution2D(conv_depth_1, kernel_size, kernel_size, border_mode='same', activation='relu')(inp)
-	conv_2 = Convolution2D(conv_depth_1, kernel_size, kernel_size, border_mode='same', activation='relu')(conv_1)
+	conv_1 = Conv2D(conv_depth_1, kernel_shape, padding='same', activation='relu')(inp)
+	conv_2 = Conv2D(conv_depth_1, kernel_shape, padding='same', activation='relu')(conv_1)
 	pool_1 = MaxPooling2D(pool_size=(pool_size, pool_size))(conv_2)
 	drop_1 = Dropout(drop_prob_1)(pool_1)
 	# Conv [64] -> Conv [64] -> Pool (with dropout on the pooling layer)
-	conv_3 = Convolution2D(conv_depth_2, kernel_size, kernel_size, border_mode='same', activation='relu')(drop_1)
-	conv_4 = Convolution2D(conv_depth_2, kernel_size, kernel_size, border_mode='same', activation='relu')(conv_3)
+	conv_3 = Conv2D(conv_depth_2, kernel_shape, padding='same', activation='relu')(drop_1)
+	conv_4 = Conv2D(conv_depth_2, kernel_shape, padding='same', activation='relu')(conv_3)
 	pool_2 = MaxPooling2D(pool_size=(pool_size, pool_size))(conv_4)
 	drop_2 = Dropout(drop_prob_1)(pool_2)
 	# Now flatten to 1D, apply FC -> ReLU (with dropout) -> softmax
@@ -135,7 +137,7 @@ def ci_vision_model (X_train):
 
 	vision_model = Model(input=inp, output=flat) # To define a model, just specify its input and output layers
 	
-	keras.utils.plot_model(vision_model, to_file='outputs/vision_model.png')
+	keras.utils.plot_model(vision_model, to_file='outputs/vision_model' + str (num) + '.png', show_shapes=True)
 
 	vision_model_inp = inp
 	vision_model_out = vision_model (inp)
@@ -144,7 +146,7 @@ def ci_vision_model (X_train):
 	
 def ci_multi_train (X_train, y_train, num_epochs = 20):
 	from keras.models import Model # basic class for specifying and training a neural network
-	from keras.layers import Input, Convolution2D, MaxPooling2D, Dense, Dropout, Flatten
+	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
 	from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
 	import numpy as np
 	import keras
@@ -161,7 +163,7 @@ def ci_multi_train (X_train, y_train, num_epochs = 20):
 	for i in range(len(X_train)):
 		X_train[i] = X_train[i].astype('float32') 
 		X_train[i] /= np.max(X_train[i]) # Normalise data to [0, 1] range
-		vision_model_inp, vision_model_out = ci_vision_model (X_train[i])
+		vision_model_inp, vision_model_out = ci_vision_model (X_train[i], i)
 		vision_model_inputs.append(vision_model_inp)
 		vision_model_outputs.append(vision_model_out)
 	
@@ -192,7 +194,7 @@ def ci_multi_train (X_train, y_train, num_epochs = 20):
 
 	print ('Classification model compiled')
 	
-	keras.utils.plot_model(classification_model, to_file='outputs/classification_model.png')
+	keras.utils.plot_model(classification_model, to_file='outputs/classification_model.png', show_shapes=True)
 
 	tbCallBack = keras.callbacks.TensorBoard(log_dir='outputs/Graph', histogram_freq=0, write_graph=True, write_images=True)
 	esCallBack = keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
@@ -206,7 +208,7 @@ def ci_multi_train (X_train, y_train, num_epochs = 20):
 
 def ci_multi_test (classification_model, X_test, y_test):
 	from keras.models import Model # basic class for specifying and training a neural network
-	from keras.layers import Input, Convolution2D, MaxPooling2D, Dense, Dropout, Flatten
+	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
 	from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
 	import numpy as np
 	import keras
@@ -227,7 +229,7 @@ def ci_multi_test (classification_model, X_test, y_test):
 def ci_speed (X_train, y_train, X_test, y_test):
 	from keras.datasets import mnist # subroutines for fetching the MNIST dataset
 	from keras.models import Model # basic class for specifying and training a neural network
-	from keras.layers import Input, Dense, Flatten, Convolution2D, MaxPooling2D, Dropout, merge
+	from keras.layers import Input, Dense, Flatten, Conv2D, MaxPooling2D, Dropout, merge
 	from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
 	from keras.regularizers import l2 # L2-regularisation
 	from keras.layers.normalization import BatchNormalization # batch normalisation
@@ -247,6 +249,7 @@ def ci_speed (X_train, y_train, X_test, y_test):
 	hidden_size = 128 # there will be 128 neurons in both hidden layers
 	l2_lambda = 0.0001 # use 0.0001 as a L2-regularisation factor
 	ens_models = 3 # we will train three separate models on the data
+	kernel_shape = (kernel_size, kernel_size)
 
 	num_train = X_train.shape[0] # there are 60000 training examples in MNIST
 	num_test = X_test.shape[0] # there are 10000 test examples in MNIST
@@ -275,9 +278,9 @@ def ci_speed (X_train, y_train, X_test, y_test):
 	outs = [] # the list of ensemble outputs
 	for i in range(ens_models):
 		# Conv [32] -> Conv [32] -> Pool (with dropout on the pooling layer), applying BN in between
-		conv_1 = Convolution2D(conv_depth, kernel_size, kernel_size, border_mode='same', init='he_uniform', W_regularizer=l2(l2_lambda), activation='relu')(inp_norm)
+		conv_1 = Conv2D(conv_depth, kernel_shape, padding='same', init='he_uniform', W_regularizer=l2(l2_lambda), activation='relu')(inp_norm)
 		conv_1 = BatchNormalization(axis=1)(conv_1)
-		conv_2 = Convolution2D(conv_depth, kernel_size, kernel_size, border_mode='same', init='he_uniform', W_regularizer=l2(l2_lambda), activation='relu')(conv_1)
+		conv_2 = Conv2D(conv_depth, kernel_shape, padding='same', init='he_uniform', W_regularizer=l2(l2_lambda), activation='relu')(conv_1)
 		conv_2 = BatchNormalization(axis=1)(conv_2)
 		pool_1 = MaxPooling2D(pool_size=(pool_size, pool_size))(conv_2)
 		drop_1 = Dropout(drop_prob_1)(pool_1)
