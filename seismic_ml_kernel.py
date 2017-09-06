@@ -205,6 +205,7 @@ def ci_multi_train (X_train, y_train, num_epochs = 20):
 			  callbacks=[tbCallBack, esCallBack])
 			  
 	classification_model.save('outputs/classification_model.h5')  # creates a HDF5 file 'my_model.h5'
+	return classification_model
 
 def ci_multi_test (classification_model, X_test, y_test):
 	from keras.models import Model # basic class for specifying and training a neural network
@@ -224,7 +225,7 @@ def ci_multi_test (classification_model, X_test, y_test):
 	
 	batch_size = 32 # in each iteration, we consider 32 training examples at once
 
-	print(classification_model.evaluate(X_test, Y_test, verbose=2)) # Evaluate the trained model on the test set!
+	print(classification_model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!
 	
 def ci_speed (X_train, y_train, X_test, y_test):
 	from keras.datasets import mnist # subroutines for fetching the MNIST dataset
