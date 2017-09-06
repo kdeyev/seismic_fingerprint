@@ -165,12 +165,10 @@ def ci_multi_train (X_train, y_train, num_epochs = 20):
 		vision_model_inputs.append(vision_model_inp)
 		vision_model_outputs.append(vision_model_out)
 	
+	num_classes = np.unique(y_train).shape[0] # there are 10 image classes
 	Y_train = np_utils.to_categorical(y_train, num_classes) # One-hot encode the labels
-	Y_test = np_utils.to_categorical(y_test, num_classes) # One-hot encode the labels
 			
 	print ('number of vision models', len (X_train))
-	
-	num_classes = np.unique(y_train).shape[0] # there are 10 image classes
 	
 	batch_size = 32 # in each iteration, we consider 32 training examples at once
 	#num_epochs = 200 # we iterate 200 times over the entire training set
@@ -220,7 +218,6 @@ def ci_multi_test (classification_model, X_test, y_test):
 	
 	num_classes = np.unique(y_test).shape[0] # there are 10 image classes
 	Y_test = np_utils.to_categorical(y_test, num_classes) # One-hot encode the labels
-	
 	num_test = X_test[0].shape[0] # there are 10000 test examples in CIFAR-10
 	
 	batch_size = 32 # in each iteration, we consider 32 training examples at once
