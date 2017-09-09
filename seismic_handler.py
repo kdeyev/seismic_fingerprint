@@ -106,6 +106,8 @@ class SeismicPrestack:
 					send = smax
 					
 				d = self.getPart (x, xend, s, send)
+				if np.count_nonzero(d) < d.size*0.8: # 20 percent of zeros
+					continue
 				if np.amax(d) == np.amin(d):
 					continue
 				parts.append(d)

@@ -34,6 +34,7 @@ def spectrogram (data):
 	spec_matrix = np.array(spec_matrix)
 	db_matrix = db_matrix - np.amax(db_matrix)
 	db_matrix = np.nan_to_num(db_matrix)
+	db_matrix[db_matrix == -np.inf] = 0
 	return db_matrix
 
 def fk (data):
@@ -50,6 +51,7 @@ def fk (data):
 	freq = 20 * np.log10(freq)
 	freq = freq - np.amax(freq)
 	freq = np.nan_to_num(freq)
+	freq[freq == -np.inf] = 0
 	return freq
 
 def plot(data):
@@ -193,24 +195,24 @@ def create_dirs (images_dir, num_classes):
 		os.makedirs(images_dir)
 
 	train_data_dir = images_dir + 'train/'
-	validation_data_dir = images_dir + 'validation/'
+	test_data_dir = images_dir + 'test/'
 
 	if not os.path.exists(train_data_dir):
 		os.makedirs(train_data_dir)
 
-	if not os.path.exists(validation_data_dir):
-		os.makedirs(validation_data_dir)
+	if not os.path.exists(test_data_dir):
+		os.makedirs(test_data_dir)
 		
 	for i in range(num_classes):
 		a = train_data_dir + str(i)
 		if not os.path.exists(a):
 			os.makedirs(a)
 			
-		a = validation_data_dir + str(i)
+		a = test_data_dir + str(i)
 		if not os.path.exists(a):
 			os.makedirs(a)
 		
-	return train_data_dir, validation_data_dir
+	return train_data_dir, test_data_dir
 				
 def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = 'outputs/images/'):
 	import numpy as np
@@ -224,18 +226,18 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = '
 	  
 
 	import os
-	if os.path.exists('outputs/X_train0.npz'):
+	if os.path.exists('outputs/X_train0.npy'):
 		for i in range(len(X_train)): 
-			X_train[i] = np.load('outputs/X_train' + str(i) + '.npz')
-			X_test[i] = np.load('outputs/X_test' + str(i) + '.npz')
+			X_train[i] = np.load('outputs/X_train' + str(i) + '.npy')
+			X_test[i] = np.load('outputs/X_test' + str(i) + '.npy')
 		
-		y_train.append(np.load('outputs/y_train.npz'))
-		y_test.append(np.load('outputs/y_test.npz'))
+		y_train = np.load('outputs/y_train.npy')
+		y_test = np.load('outputs/y_test.npy')
 		
 		return (X_train, y_train), (X_test, y_test)
 	
 	if images_dir != None:
-		train_data_dir, validation_data_dir = create_dirs(images_dir, len(noisers))
+		train_data_dir, test_data_dir = create_dirs(images_dir, len(noisers))
 			
 	handlers = [seismic_handler.SeismicPrestack(file_name, noiser) for noiser in noisers]
 	gather_keys = [handler.getHeaderVals (sorting_key) for handler in handlers]
@@ -260,7 +262,7 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = '
 					throw ('wrong shapes')
 				
 				train = False
-				if i < nparts*0.8:
+				if np.random.rand() < 0.8:
 					train = True
 					
 				png_name = None
@@ -268,7 +270,7 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = '
 					if train:
 						png_name = train_data_dir
 					else:
-						png_name = validation_data_dir
+						png_name = test_data_dir
 			   
 					png_name += str (category) + '/'	
 					png_name += str(counter)
@@ -306,9 +308,9 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = '
 		return
 		
 	for i in range(len(X_train)): 
-		np.save('outputs/X_train' + str(i) + '.npz', X_train[i])
-		np.save('outputs/X_test' + str(i) + '.npz', X_test[i])
+		np.save('outputs/X_train' + str(i), X_train[i])
+		np.save('outputs/X_test' + str(i), X_test[i])
 	
-	np.save('outputs/y_train.npz', y_train)
-	np.save('outputs/y_test.npz', y_test)
+	np.save('outputs/y_train', y_train)
+	np.save('outputs/y_test', y_test)
 	return (X_train, y_train), (X_test, y_test)

@@ -227,6 +227,83 @@ def ci_multi_test (classification_model, X_test, y_test):
 
 	print(classification_model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!
 	
+def ci_multi_evaluate_random (model, X_test, y_test):
+	def slice (X_test, y_test, num):
+		import numpy as np
+		single = []
+		for i in range(len(X_test)):
+			single.append(np.array([X_test[i][num]]))
+		return single, y_test[num]
+
+	import numpy as np
+	randidx = np.random.randint(0, len(y_test))
+	sl, correct_cat = slice(X_test,y_test, randidx)
+
+	from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
+
+	import matplotlib.pyplot as plt
+	fig = plt.figure(figsize=(16, 8))
+
+	a = sl[0][0] 
+	a = a.T[0].T
+	ax = fig.add_subplot(131)
+	vm = np.percentile(a, 99)
+	imparams = {
+		#'interpolation': 'none',
+		'cmap': "gray",
+		'vmin': -vm,
+		'vmax': vm,
+		'aspect': 'auto'
+	}
+	plt.imshow(a, **imparams)
+
+	a = sl[1][0] 
+	a = a.T[0].T
+
+	ax = fig.add_subplot(132)
+
+	imparams = {
+		#'interpolation': 'none',
+		'cmap': "gray",
+		'aspect': 'auto'
+		}
+	plt.imshow(a, **imparams)
+
+	a = sl[2][0] 
+	a = a.T[0].T
+	ax = fig.add_subplot(133)
+
+	imparams = {
+		#'interpolation': 'none',
+		'cmap': "gray",
+		'aspect': 'auto'
+		}
+	plt.imshow(a, **imparams)
+
+
+	import pandas as pd
+	answer = model.predict(sl)
+
+	def highlight_max(data, color='yellow'):
+		'''
+		highlight the maximum in a Series or DataFrame
+		'''
+		attr = 'background-color: {}'.format(color)
+		if data.ndim == 1:  # Series from .apply(axis=0) or axis=1
+			is_max = data == data.max()
+			return [attr if v else '' for v in is_max]
+		else:  # from .apply(axis=None)
+			is_max = data == data.max().max()
+			return pd.DataFrame(np.where(is_max, attr, ''),
+								index=data.index, columns=data.columns)
+
+	color = 'green'
+	if answer.argmax() != correct_cat:
+		color = 'red'
+	table = pd.DataFrame(answer*100).style.apply(highlight_max, color=color, axis=None)
+	
+	return randidx, correct_cat, table
+	
 def ci_speed (X_train, y_train, X_test, y_test):
 	from keras.datasets import mnist # subroutines for fetching the MNIST dataset
 	from keras.models import Model # basic class for specifying and training a neural network
