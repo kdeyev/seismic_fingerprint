@@ -214,7 +214,7 @@ def create_dirs (images_dir, num_classes):
 		
 	return train_data_dir, test_data_dir
 				
-def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = 'outputs/images/'):
+def create_seis_dataset (file_name, sorting_key, window, noisers, values, images_dir = 'outputs/images/'):
 	import numpy as np
 	import seismic_handler
 
@@ -223,6 +223,8 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = '
 	y_train = []
 	X_test = [[],[],[]] 
 	y_test = []
+	v_train = []
+	v_test = []
 	  
 
 	import os
@@ -233,8 +235,11 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = '
 		
 		y_train = np.load('outputs/y_train.npy')
 		y_test = np.load('outputs/y_test.npy')
+
+		v_train = np.load('outputs/v_train.npy')
+		v_test = np.load('outputs/v_test.npy')
 		
-		return (X_train, y_train), (X_test, y_test)
+		return (X_train, y_train, v_train), (X_test, y_test, v_test)
 	
 	if images_dir != None:
 		train_data_dir, test_data_dir = create_dirs(images_dir, len(noisers))
@@ -281,10 +286,12 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = '
 					for i in range (len(data_repr)):
 						X_train[i].append(data_repr[i])
 					y_train.append (category)
+					v_train.append(values[category])
 				else:
 					for i in range (len(data_repr)):
 						X_test[i].append(data_repr[i])
-					y_test.append(category)	  
+					y_test.append(category)	 
+					v_test.append(values[category])
 				
 				counter += 1
 	
@@ -313,4 +320,6 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, images_dir = '
 	
 	np.save('outputs/y_train', y_train)
 	np.save('outputs/y_test', y_test)
-	return (X_train, y_train), (X_test, y_test)
+	np.save('outputs/v_train', v_train)
+	np.save('outputs/v_test', v_test)
+	return (X_train, y_train, v_train), (X_test, y_test, v_test)

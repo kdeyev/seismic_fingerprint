@@ -108,6 +108,7 @@ def ci (X_train, y_train, X_test, y_test, num_epochs = 200):
 def ci_vision_model (X_train, num):
 	from keras.models import Model # basic class for specifying and training a neural network
 	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
+	#from keras.layers.normalization import BatchNormalization # batch normalisation
 	import keras
 	
 	kernel_size = 3 # we will use 3x3 kernels throughout
@@ -124,12 +125,16 @@ def ci_vision_model (X_train, num):
 	inp = Input(shape=(depth, height, width)) # N.B. depth goes first in Keras!
 	# Conv [32] -> Conv [32] -> Pool (with dropout on the pooling layer)
 	conv_1 = Conv2D(conv_depth_1, kernel_shape, padding='same', activation='relu')(inp)
+	#conv_1 = BatchNormalization(axis=1)(conv_1)
 	conv_2 = Conv2D(conv_depth_1, kernel_shape, padding='same', activation='relu')(conv_1)
+	#conv_2 = BatchNormalization(axis=1)(conv_2)
 	pool_1 = MaxPooling2D(pool_size=(pool_size, pool_size))(conv_2)
 	drop_1 = Dropout(drop_prob_1)(pool_1)
 	# Conv [64] -> Conv [64] -> Pool (with dropout on the pooling layer)
 	conv_3 = Conv2D(conv_depth_2, kernel_shape, padding='same', activation='relu')(drop_1)
+	#conv_3 = BatchNormalization(axis=1)(conv_3)
 	conv_4 = Conv2D(conv_depth_2, kernel_shape, padding='same', activation='relu')(conv_3)
+	#conv_4 = BatchNormalization(axis=1)(conv_4)
 	pool_2 = MaxPooling2D(pool_size=(pool_size, pool_size))(conv_4)
 	drop_2 = Dropout(drop_prob_1)(pool_2)
 	# Now flatten to 1D, apply FC -> ReLU (with dropout) -> softmax
@@ -144,7 +149,7 @@ def ci_vision_model (X_train, num):
 	return vision_model_inp, vision_model_out
 	
 	
-def ci_multi_train (X_train, y_train, num_epochs = 20):
+def ci_multi_train_classification (X_train, y_train, num_epochs = 20):
 	from keras.models import Model # basic class for specifying and training a neural network
 	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
 	from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
@@ -157,7 +162,6 @@ def ci_multi_train (X_train, y_train, num_epochs = 20):
 		classification_model = keras.models.load_model('outputs/classification_model.h5')
 		return classification_model
 	
-	
 	vision_model_inputs = []
 	vision_model_outputs = []
 	for i in range(len(X_train)):
@@ -167,13 +171,12 @@ def ci_multi_train (X_train, y_train, num_epochs = 20):
 		vision_model_inputs.append(vision_model_inp)
 		vision_model_outputs.append(vision_model_out)
 	
-	num_classes = np.unique(y_train).shape[0] # there are 10 image classes
+	num_classes = np.unique(y_train).shape[0] # define class number as number of unique categories
 	Y_train = np_utils.to_categorical(y_train, num_classes) # One-hot encode the labels
 			
 	print ('number of vision models', len (X_train))
 	
 	batch_size = 32 # in each iteration, we consider 32 training examples at once
-	#num_epochs = 200 # we iterate 200 times over the entire training set
 	hidden_size = 512 # the FC layer will have 512 neurons
 	drop_prob_2 = 0.5 # dropout in the FC layer with probability 0.5
 			
@@ -207,7 +210,7 @@ def ci_multi_train (X_train, y_train, num_epochs = 20):
 	classification_model.save('outputs/classification_model.h5')  # creates a HDF5 file 'my_model.h5'
 	return classification_model
 
-def ci_multi_test (classification_model, X_test, y_test):
+def ci_multi_test_classification (classification_model, X_test, y_test):
 	from keras.models import Model # basic class for specifying and training a neural network
 	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
 	from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
@@ -227,7 +230,7 @@ def ci_multi_test (classification_model, X_test, y_test):
 
 	print(classification_model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!
 	
-def ci_multi_evaluate_random (model, X_test, y_test):
+def ci_multi_evaluate_random_classification (model, X_test, y_test):
 	def slice (X_test, y_test, num):
 		import numpy as np
 		single = []
@@ -303,6 +306,155 @@ def ci_multi_evaluate_random (model, X_test, y_test):
 	table = pd.DataFrame(answer*100).style.apply(highlight_max, color=color, axis=None)
 	
 	return randidx, correct_cat, table
+	
+	
+def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
+	from keras.models import Model # basic class for specifying and training a neural network
+	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
+	from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
+	import numpy as np
+	import keras
+	from sklearn import preprocessing	
+	
+	import os
+	if os.path.exists('outputs/regression_model.h5'):
+		print ('Model already exists')
+		regression_model = keras.models.load_model('outputs/regression_model.h5')
+		
+		v_scaler = preprocessing.MinMaxScaler(feature_range=(0, 1)) 	
+		V_train = v_scaler.fit_transform(v_train.reshape(-1,1))
+		
+		return regression_model, v_scaler
+	
+	vision_model_inputs = []
+	vision_model_outputs = []
+	for i in range(len(X_train)):
+		X_train[i] = X_train[i].astype('float32') 
+		X_train[i] /= np.max(X_train[i]) # Normalise data to [0, 1] range
+		vision_model_inp, vision_model_out = ci_vision_model (X_train[i], i)
+		vision_model_inputs.append(vision_model_inp)
+		vision_model_outputs.append(vision_model_out)
+		
+	v_scaler = preprocessing.MinMaxScaler(feature_range=(0, 1)) 	
+	V_train = v_scaler.fit_transform(v_train.reshape(-1,1))
+			
+	print ('number of vision models', len (X_train))
+	
+	batch_size = 32 # in each iteration, we consider 32 training examples at once
+	hidden_size = 512 # the FC layer will have 512 neurons
+	drop_prob_2 = 0.5 # dropout in the FC layer with probability 0.5
+			
+	print ('Vision models are ready')
+	
+	concatenated_inp = keras.layers.concatenate(vision_model_outputs)	
+	hidden = Dense(hidden_size, activation='relu')(concatenated_inp)
+	hidden = Dense(128, activation='relu')(hidden)
+	drop_3 = Dropout(drop_prob_2)(hidden)
+	out = Dense(1, activation='softmax')(drop_3)
+
+	regression_model = Model(vision_model_inputs, out)
+
+	print ('Classification model is ready')
+	
+	regression_model.compile(	loss='mse', # mean square error
+								optimizer='adam', # using the Adam optimiser
+								metrics=['accuracy']) # reporting the accuracy
+
+	print ('Classification model compiled')
+	
+	keras.utils.plot_model(regression_model, to_file='outputs/regression_model.png', show_shapes=True)
+
+	tbCallBack = keras.callbacks.TensorBoard(log_dir='outputs/Graph', histogram_freq=0, write_graph=True, write_images=True)
+	esCallBack = keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+
+	regression_model.fit(X_train, V_train, # Train the model using the training set...
+			  batch_size=batch_size, epochs=num_epochs,
+			  verbose=1, validation_split=0.1, # ...holding out 10% of the data for validation
+			  callbacks=[tbCallBack, esCallBack])
+			  
+	regression_model.save('outputs/regression_model.h5')  # creates a HDF5 file 'my_model.h5'	
+	return regression_model, v_scaler
+
+def ci_multi_test_regression (regression_model, v_scaler, X_test, v_test):
+	from keras.models import Model # basic class for specifying and training a neural network
+	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
+	from keras.utils import np_utils # utilities for one-hot encoding of ground truth values
+	import numpy as np
+	import keras
+	
+	for i in range(len(X_test)):
+		X_test[i] = X_test[i].astype('float32')
+		X_test[i]  /= np.max(X_test[i]) # Normalise data to [0, 1] range
+	
+	
+	V_test = v_scaler.fit_transform(v_test.reshape(-1,1))
+	
+	num_test = X_test[0].shape[0]
+	
+	batch_size = 32 # in each iteration, we consider 32 training examples at once
+
+	print(regression_model.evaluate(X_test, V_test, verbose=1)) # Evaluate the trained model on the test set!
+	
+def ci_multi_evaluate_random_regression (model, v_scaler, X_test, v_test):
+	def slice (X_test, v_test, num):
+		import numpy as np
+		single = []
+		for i in range(len(X_test)):
+			single.append(np.array([X_test[i][num]]))
+		return single, v_test[num]
+
+	import numpy as np
+	randidx = np.random.randint(0, len(v_test))
+	sl, correct_cat = slice(X_test, v_test, randidx)
+
+	from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
+
+	import matplotlib.pyplot as plt
+	fig = plt.figure(figsize=(16, 8))
+
+	a = sl[0][0] 
+	a = a.T[0].T
+	ax = fig.add_subplot(131)
+	vm = np.percentile(a, 99)
+	imparams = {
+		#'interpolation': 'none',
+		'cmap': "gray",
+		'vmin': -vm,
+		'vmax': vm,
+		'aspect': 'auto'
+	}
+	plt.imshow(a, **imparams)
+
+	a = sl[1][0] 
+	a = a.T[0].T
+
+	ax = fig.add_subplot(132)
+
+	imparams = {
+		#'interpolation': 'none',
+		'cmap': "gray",
+		'aspect': 'auto'
+		}
+	plt.imshow(a, **imparams)
+
+	a = sl[2][0] 
+	a = a.T[0].T
+	ax = fig.add_subplot(133)
+
+	imparams = {
+		#'interpolation': 'none',
+		'cmap': "gray",
+		'aspect': 'auto'
+		}
+	plt.imshow(a, **imparams)
+
+
+	import pandas as pd
+	answer = model.predict(sl)
+	answer = v_scaler.inverse_transform(answer)
+		
+	return randidx, correct_cat, answer[0][0]
+
 	
 def ci_speed (X_train, y_train, X_test, y_test):
 	from keras.datasets import mnist # subroutines for fetching the MNIST dataset
