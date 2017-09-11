@@ -349,12 +349,14 @@ def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 	concatenated_inp = keras.layers.concatenate(vision_model_outputs)	
 	hidden = Dense(hidden_size, activation='relu')(concatenated_inp)
 	hidden = Dense(128, activation='relu')(hidden)
+	hidden = Dense(64, activation='relu')(hidden)
+	hidden = Dense(32, activation='relu')(hidden)
 	drop_3 = Dropout(drop_prob_2)(hidden)
-	out = Dense(1, activation='softmax')(drop_3)
+	out = Dense(1, activation='linear')(drop_3)
 
 	regression_model = Model(vision_model_inputs, out)
 
-	print ('Classification model is ready')
+	print ('Regression model is ready')
 	
 	regression_model.compile(	loss='mse', # mean square error
 								optimizer='adam', # using the Adam optimiser
@@ -374,7 +376,7 @@ def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 			  
 	regression_model.save('outputs/regression_model.h5')  # creates a HDF5 file 'my_model.h5'	
 	return regression_model, v_scaler
-
+	
 def ci_multi_test_regression (regression_model, v_scaler, X_test, v_test):
 	from keras.models import Model # basic class for specifying and training a neural network
 	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
