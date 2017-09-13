@@ -323,3 +323,35 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, values, images
 	np.save('outputs/v_train', v_train)
 	np.save('outputs/v_test', v_test)
 	return (X_train, y_train, v_train), (X_test, y_test, v_test)
+	
+def create_bp_synth ():	
+	noisers = [
+			   BP(0.1, 0.15, 0.2, 0.25, 1), # BP1
+			   BP(0.2, 0.25, 0.3, 0.35, 1), # BP2
+			   BP(0.3, 0.35, 0.4, 0.45, 1), # BP3
+			   BP(0.4, 0.45, 0.5, 0.55, 1), # BP4
+			  ]
+
+	values = [
+				20.,
+				30.,
+				40.,
+				50.
+			  ]
+
+	labels = [
+				'BP 0.1, 0.15, 0.2, 0.25',
+				'BP 0.2, 0.25, 0.3, 0.35',
+				'BP 0.3, 0.35, 0.4, 0.45',
+				'BP 0.4, 0.45, 0.5, 0.55'
+			 ]
+
+	(X_train, y_train, v_train), (X_test, y_test, v_test) = create_seis_dataset ( file_name ='data/prestack.sgy', 
+																				  sorting_key = 'original_field_record_number', 
+																				  window = [50, 0.5], 
+																				  noisers = noisers,
+																				  values = values,
+																				  images_dir = None # dont create images
+																				)
+																				
+	return (X_train, y_train, v_train), (X_test, y_test, v_test), values, labels

@@ -228,85 +228,7 @@ def ci_multi_test_classification (classification_model, X_test, y_test):
 	
 	batch_size = 32 # in each iteration, we consider 32 training examples at once
 
-	print(classification_model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!
-	
-def ci_multi_evaluate_random_classification (model, X_test, y_test):
-	def slice (X_test, y_test, num):
-		import numpy as np
-		single = []
-		for i in range(len(X_test)):
-			single.append(np.array([X_test[i][num]]))
-		return single, y_test[num]
-
-	import numpy as np
-	randidx = np.random.randint(0, len(y_test))
-	sl, correct_cat = slice(X_test,y_test, randidx)
-
-	from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
-
-	import matplotlib.pyplot as plt
-	fig = plt.figure(figsize=(16, 8))
-
-	a = sl[0][0] 
-	a = a.T[0].T
-	ax = fig.add_subplot(131)
-	vm = np.percentile(a, 99)
-	imparams = {
-		#'interpolation': 'none',
-		'cmap': "gray",
-		'vmin': -vm,
-		'vmax': vm,
-		'aspect': 'auto'
-	}
-	plt.imshow(a, **imparams)
-
-	a = sl[1][0] 
-	a = a.T[0].T
-
-	ax = fig.add_subplot(132)
-
-	imparams = {
-		#'interpolation': 'none',
-		'cmap': "gray",
-		'aspect': 'auto'
-		}
-	plt.imshow(a, **imparams)
-
-	a = sl[2][0] 
-	a = a.T[0].T
-	ax = fig.add_subplot(133)
-
-	imparams = {
-		#'interpolation': 'none',
-		'cmap': "gray",
-		'aspect': 'auto'
-		}
-	plt.imshow(a, **imparams)
-
-
-	import pandas as pd
-	answer = model.predict(sl)
-
-	def highlight_max(data, color='yellow'):
-		'''
-		highlight the maximum in a Series or DataFrame
-		'''
-		attr = 'background-color: {}'.format(color)
-		if data.ndim == 1:  # Series from .apply(axis=0) or axis=1
-			is_max = data == data.max()
-			return [attr if v else '' for v in is_max]
-		else:  # from .apply(axis=None)
-			is_max = data == data.max().max()
-			return pd.DataFrame(np.where(is_max, attr, ''),
-								index=data.index, columns=data.columns)
-
-	color = 'green'
-	if answer.argmax() != correct_cat:
-		color = 'red'
-	table = pd.DataFrame(answer*100).style.apply(highlight_max, color=color, axis=None)
-	
-	return randidx, correct_cat, table
-	
+	print(classification_model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!	
 	
 def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 	from keras.models import Model # basic class for specifying and training a neural network
@@ -393,22 +315,22 @@ def ci_multi_test_regression (regression_model, v_scaler, X_test, v_test):
 
 	print(regression_model.evaluate(X_test, V_test, verbose=1)) # Evaluate the trained model on the test set!
 	
-def ci_multi_evaluate_random_regression (model, v_scaler, X_test, v_test):
+def ci_multi_evaluate_random(model, X_test, y_test):
+	import numpy as np
+		
 	def slice (X_test, v_test, num):
-		import numpy as np
 		single = []
 		for i in range(len(X_test)):
 			single.append(np.array([X_test[i][num]]))
 		return single, v_test[num]
-
-	import numpy as np
-	randidx = np.random.randint(0, len(v_test))
-	sl, correct_cat = slice(X_test, v_test, randidx)
+	
+	randidx = np.random.randint(0, len(y_test))
+	sl, correct_y = slice(X_test, y_test, randidx)
 
 	from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 
 	import matplotlib.pyplot as plt
-	fig = plt.figure(figsize=(16, 8))
+	fig = plt.figure(figsize=(16, 4))
 
 	a = sl[0][0] 
 	a = a.T[0].T
@@ -446,12 +368,36 @@ def ci_multi_evaluate_random_regression (model, v_scaler, X_test, v_test):
 		}
 	plt.imshow(a, **imparams)
 
-
+	predicted_y = model.predict(sl)
+	return randidx, correct_y, predicted_y[0]
+	
+def highlight_max(data, color='yellow'):
+	'''
+	highlight the maximum in a Series or DataFrame
+	'''
 	import pandas as pd
-	answer = model.predict(sl)
-	answer = v_scaler.inverse_transform(answer)
+	import numpy as np
+	attr = 'background-color: {}'.format(color)
+	if data.ndim == 1:  # Series from .apply(axis=0) or axis=1
+		is_max = data == data.max()
+		return [attr if v else '' for v in is_max]
+	else:  # from .apply(axis=None)
+		is_max = data == data.max().max()
+		return pd.DataFrame(np.where(is_max, attr, ''),
+							index=data.index, columns=data.columns)
+
+def ci_multi_evaluate_random_classification (model, X_test, y_test):
+	import numpy as np
+	
+	randidx, correct_y, predicted_y = ci_multi_evaluate_random (model, X_test, y_test)
+								
+	return randidx, correct_y, predicted_y
+
+def ci_multi_evaluate_random_regression (model, v_scaler, X_test, v_test):
+	randidx, correct_y, predicted_y = ci_multi_evaluate_random (model, X_test, v_test)
+	predicted_y = v_scaler.inverse_transform(predicted_y)
 		
-	return randidx, correct_cat, answer[0][0]
+	return randidx, correct_y, predicted_y[0]
 
 	
 def ci_speed (X_train, y_train, X_test, y_test):
