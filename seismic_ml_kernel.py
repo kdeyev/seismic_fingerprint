@@ -244,6 +244,7 @@ def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 		regression_model = keras.models.load_model('outputs/regression_model.h5')
 		
 		v_scaler = preprocessing.MinMaxScaler(feature_range=(0, 1)) 	
+		v_train = v_train.astype('float32') 
 		V_train = v_scaler.fit_transform(v_train.reshape(-1,1))
 		
 		return regression_model, v_scaler
@@ -257,7 +258,8 @@ def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 		vision_model_inputs.append(vision_model_inp)
 		vision_model_outputs.append(vision_model_out)
 		
-	v_scaler = preprocessing.MinMaxScaler(feature_range=(0, 1)) 	
+	v_scaler = preprocessing.MinMaxScaler(feature_range=(0, 1)) 
+	v_train = v_train.astype('float32') 	
 	V_train = v_scaler.fit_transform(v_train.reshape(-1,1))
 			
 	print ('number of vision models', len (X_train))
@@ -306,7 +308,7 @@ def ci_multi_test_regression (regression_model, v_scaler, X_test, v_test):
 		X_test[i] = X_test[i].astype('float32')
 		X_test[i]  /= np.max(X_test[i]) # Normalise data to [0, 1] range
 	
-	
+	v_train = v_train.astype('float32') 
 	V_test = v_scaler.fit_transform(v_test.reshape(-1,1))
 	
 	num_test = X_test[0].shape[0]
