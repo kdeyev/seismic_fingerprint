@@ -105,7 +105,7 @@ def ci (X_train, y_train, X_test, y_test, num_epochs = 200):
 			  verbose=1, validation_split=0.1) # ...holding out 10% of the data for validation
 	print(model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!
 
-def ci_vision_model (X_train, num):
+def ci_vision_model (X_train, num, iters = 0):
 	from keras.models import Model # basic class for specifying and training a neural network
 	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
 	#from keras.layers.normalization import BatchNormalization # batch normalisation
@@ -136,9 +136,16 @@ def ci_vision_model (X_train, num):
 	conv_4 = Conv2D(conv_depth_2, kernel_shape, padding='same', activation='relu')(conv_3)
 	#conv_4 = BatchNormalization(axis=1)(conv_4)
 	pool_2 = MaxPooling2D(pool_size=(pool_size, pool_size))(conv_4)
-	drop_2 = Dropout(drop_prob_1)(pool_2)
-	# Now flatten to 1D, apply FC -> ReLU (with dropout) -> softmax
-	flat = Flatten()(drop_2)
+	next = Dropout(drop_prob_1)(pool_2)
+	for i in range(iters):
+		next = Conv2D(conv_depth_2, kernel_shape, padding='same', activation='relu')(next)
+		#next = BatchNormalization(axis=1)(next)
+		next = Conv2D(conv_depth_2, kernel_shape, padding='same', activation='relu')(next)
+		#next = BatchNormalization(axis=1)(next)
+		next = MaxPooling2D(pool_size=(pool_size, pool_size))(next)
+		next = Dropout(drop_prob_1)(next)
+		# Now flatten to 1D, apply FC -> ReLU (with dropout) -> softmax
+	flat = Flatten()(next)
 
 	vision_model = Model(input=inp, output=flat) # To define a model, just specify its input and output layers
 	
@@ -225,8 +232,6 @@ def ci_multi_test_classification (classification_model, X_test, y_test):
 	num_classes = np.unique(y_test).shape[0] # there are 10 image classes
 	Y_test = np_utils.to_categorical(y_test, num_classes) # One-hot encode the labels
 	num_test = X_test[0].shape[0] # there are 10000 test examples in CIFAR-10
-	
-	batch_size = 32 # in each iteration, we consider 32 training examples at once
 
 	print(classification_model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!	
 	
@@ -254,7 +259,7 @@ def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 	for i in range(len(X_train)):
 		X_train[i] = X_train[i].astype('float32') 
 		X_train[i] /= np.max(X_train[i]) # Normalise data to [0, 1] range
-		vision_model_inp, vision_model_out = ci_vision_model (X_train[i], i)
+		vision_model_inp, vision_model_out = ci_vision_model (X_train[i], i, 2)
 		vision_model_inputs.append(vision_model_inp)
 		vision_model_outputs.append(vision_model_out)
 		
@@ -272,7 +277,11 @@ def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 	
 	concatenated_inp = keras.layers.concatenate(vision_model_outputs)	
 	hidden = Dense(hidden_size, activation='relu')(concatenated_inp)
-	out = Dense(1, activation='linear')(hidden)
+	hidden = Dense(128, activation='relu')(hidden)
+	hidden = Dense(64, activation='relu')(hidden)
+	hidden = Dense(32, activation='relu')(hidden)
+	drop_3 = Dropout(drop_prob_2)(hidden)
+	out = Dense(1, activation='linear')(drop_3)
 
 	regression_model = Model(vision_model_inputs, out)
 
@@ -282,7 +291,7 @@ def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 								optimizer='adam', # using the Adam optimiser
 								metrics=['accuracy']) # reporting the accuracy
 
-	print ('Classification model compiled')
+	print ('Regression model compiled')
 	
 	keras.utils.plot_model(regression_model, to_file='outputs/regression_model.png', show_shapes=True)
 
@@ -308,13 +317,11 @@ def ci_multi_test_regression (regression_model, v_scaler, X_test, v_test):
 		X_test[i] = X_test[i].astype('float32')
 		X_test[i]  /= np.max(X_test[i]) # Normalise data to [0, 1] range
 	
-	v_train = v_train.astype('float32') 
+	v_test = v_test.astype('float32') 
 	V_test = v_scaler.fit_transform(v_test.reshape(-1,1))
 	
 	num_test = X_test[0].shape[0]
 	
-	batch_size = 32 # in each iteration, we consider 32 training examples at once
-
 	print(regression_model.evaluate(X_test, V_test, verbose=1)) # Evaluate the trained model on the test set!
 	
 def ci_multi_evaluate_random(model, X_test):
