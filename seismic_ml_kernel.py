@@ -315,17 +315,17 @@ def ci_multi_test_regression (regression_model, v_scaler, X_test, v_test):
 
 	print(regression_model.evaluate(X_test, V_test, verbose=1)) # Evaluate the trained model on the test set!
 	
-def ci_multi_evaluate_random(model, X_test, y_test):
+def ci_multi_evaluate_random(model, X_test):
 	import numpy as np
 		
-	def slice (X_test, v_test, num):
+	def slice (X_test, num):
 		single = []
 		for i in range(len(X_test)):
 			single.append(np.array([X_test[i][num]]))
-		return single, v_test[num]
+		return single
 	
-	randidx = np.random.randint(0, len(y_test))
-	sl, correct_y = slice(X_test, y_test, randidx)
+	randidx = np.random.randint(0, len(X_test[0]))
+	sl = slice(X_test, randidx)
 
 	from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 
@@ -369,7 +369,7 @@ def ci_multi_evaluate_random(model, X_test, y_test):
 	plt.imshow(a, **imparams)
 
 	predicted_y = model.predict(sl)
-	return randidx, correct_y, predicted_y[0]
+	return randidx, predicted_y[0]
 	
 def highlight_max(data, color='yellow'):
 	'''
@@ -386,18 +386,17 @@ def highlight_max(data, color='yellow'):
 		return pd.DataFrame(np.where(is_max, attr, ''),
 							index=data.index, columns=data.columns)
 
-def ci_multi_evaluate_random_classification (model, X_test, y_test):
+def ci_multi_evaluate_random_classification (model, X_test):
 	import numpy as np
-	
-	randidx, correct_y, predicted_y = ci_multi_evaluate_random (model, X_test, y_test)
+	randidx, predicted_y = ci_multi_evaluate_random (model, X_test)
 								
-	return randidx, correct_y, predicted_y
+	return randidx, predicted_y
 
-def ci_multi_evaluate_random_regression (model, v_scaler, X_test, v_test):
-	randidx, correct_y, predicted_y = ci_multi_evaluate_random (model, X_test, v_test)
-	predicted_y = v_scaler.inverse_transform(predicted_y)
+def ci_multi_evaluate_random_regression (model, v_scaler, X_test):
+	randidx, predicted_y = ci_multi_evaluate_random (model, X_test)
+	predicted_y = v_scaler.inverse_transform(predicted_y.reshape(-1, 1))
 		
-	return randidx, correct_y, predicted_y[0]
+	return randidx, predicted_y[0]
 
 	
 def ci_speed (X_train, y_train, X_test, y_test):
