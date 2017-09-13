@@ -348,11 +348,7 @@ def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 	
 	concatenated_inp = keras.layers.concatenate(vision_model_outputs)	
 	hidden = Dense(hidden_size, activation='relu')(concatenated_inp)
-	hidden = Dense(128, activation='relu')(hidden)
-	hidden = Dense(64, activation='relu')(hidden)
-	hidden = Dense(32, activation='relu')(hidden)
-	drop_3 = Dropout(drop_prob_2)(hidden)
-	out = Dense(1, activation='linear')(drop_3)
+	out = Dense(1, activation='linear')(hidden)
 
 	regression_model = Model(vision_model_inputs, out)
 
