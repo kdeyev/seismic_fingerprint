@@ -64,9 +64,9 @@ def ci (X_train, y_train, X_test, y_test, num_epochs = 200):
 	hidden_size = 512 # the FC layer will have 512 neurons
 	kernel_shape = (kernel_size, kernel_size)
 
-	num_train, depth, height, width = X_train.shape # there are 50000 training examples in CIFAR-10 
-	num_test = X_test.shape[0] # there are 10000 test examples in CIFAR-10
-	num_classes = np.unique(y_train).shape[0] # there are 10 image classes
+	num_train, depth, height, width = X_train.shape
+	num_test = X_test.shape[0]
+	num_classes = np.unique(y_train).shape[0]
 	
 	X_train = X_train.astype('float32') 
 	X_test = X_test.astype('float32')
@@ -105,7 +105,7 @@ def ci (X_train, y_train, X_test, y_test, num_epochs = 200):
 			  verbose=1, validation_split=0.1) # ...holding out 10% of the data for validation
 	print(model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!
 
-def ci_vision_model (X_train, num, iters = 0):
+def ci_vision_model (X_train, num, base_name, iters = 0):
 	from keras.models import Model # basic class for specifying and training a neural network
 	from keras.layers import Input, Conv2D, MaxPooling2D, Dense, Dropout, Flatten
 	#from keras.layers.normalization import BatchNormalization # batch normalisation
@@ -118,7 +118,7 @@ def ci_vision_model (X_train, num, iters = 0):
 	drop_prob_1 = 0.25 # dropout after pooling with probability 0.25
 	kernel_shape = (kernel_size, kernel_size)
 	
-	num_train, depth, height, width = X_train.shape # there are 50000 training examples in CIFAR-10 
+	num_train, depth, height, width = X_train.shape
 	
 	print ('image has', X_train.shape[1]*X_train.shape[2], 'pixels')
 	
@@ -149,7 +149,7 @@ def ci_vision_model (X_train, num, iters = 0):
 
 	vision_model = Model(input=inp, output=flat) # To define a model, just specify its input and output layers
 	
-	keras.utils.plot_model(vision_model, to_file='outputs/vision_model' + str (num) + '.png', show_shapes=True)
+	keras.utils.plot_model(vision_model, to_file='outputs/' + base_name + '_vision_model' + str (num) + '.png', show_shapes=True)
 
 	vision_model_inp = inp
 	vision_model_out = vision_model (inp)
@@ -174,7 +174,7 @@ def ci_multi_train_classification (X_train, y_train, num_epochs = 20):
 	for i in range(len(X_train)):
 		X_train[i] = X_train[i].astype('float32') 
 		X_train[i] /= np.max(X_train[i]) # Normalise data to [0, 1] range
-		vision_model_inp, vision_model_out = ci_vision_model (X_train[i], i)
+		vision_model_inp, vision_model_out = ci_vision_model (X_train[i], i, 'classification', 2)
 		vision_model_inputs.append(vision_model_inp)
 		vision_model_outputs.append(vision_model_out)
 	
@@ -214,7 +214,7 @@ def ci_multi_train_classification (X_train, y_train, num_epochs = 20):
 			  verbose=1, validation_split=0.1, # ...holding out 10% of the data for validation
 			  callbacks=[tbCallBack, esCallBack])
 			  
-	classification_model.save('outputs/classification_model.h5')  # creates a HDF5 file 'my_model.h5'
+	classification_model.save('outputs/classification_model.h5')
 	return classification_model
 
 def ci_multi_test_classification (classification_model, X_test, y_test):
@@ -231,7 +231,7 @@ def ci_multi_test_classification (classification_model, X_test, y_test):
 	
 	num_classes = np.unique(y_test).shape[0] # there are 10 image classes
 	Y_test = np_utils.to_categorical(y_test, num_classes) # One-hot encode the labels
-	num_test = X_test[0].shape[0] # there are 10000 test examples in CIFAR-10
+	num_test = X_test[0].shape[0]
 
 	print(classification_model.evaluate(X_test, Y_test, verbose=1)) # Evaluate the trained model on the test set!	
 	
@@ -259,7 +259,7 @@ def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 	for i in range(len(X_train)):
 		X_train[i] = X_train[i].astype('float32') 
 		X_train[i] /= np.max(X_train[i]) # Normalise data to [0, 1] range
-		vision_model_inp, vision_model_out = ci_vision_model (X_train[i], i, 2)
+		vision_model_inp, vision_model_out = ci_vision_model (X_train[i], i, 'regression', 2)
 		vision_model_inputs.append(vision_model_inp)
 		vision_model_outputs.append(vision_model_out)
 		
@@ -303,7 +303,7 @@ def ci_multi_train_regression (X_train, v_train, num_epochs = 20):
 			  verbose=1, validation_split=0.1, # ...holding out 10% of the data for validation
 			  callbacks=[tbCallBack, esCallBack])
 			  
-	regression_model.save('outputs/regression_model.h5')  # creates a HDF5 file 'my_model.h5'	
+	regression_model.save('outputs/regression_model.h5')
 	return regression_model, v_scaler
 	
 def ci_multi_test_regression (regression_model, v_scaler, X_test, v_test):
