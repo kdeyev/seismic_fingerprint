@@ -174,7 +174,7 @@ def ci_multi_train_classification (X_train, y_train, num_epochs = 20):
 	for i in range(len(X_train)):
 		X_train[i] = X_train[i].astype('float32') 
 		X_train[i] /= np.max(X_train[i]) # Normalise data to [0, 1] range
-		vision_model_inp, vision_model_out = ci_vision_model (X_train[i], i, 'classification', 2)
+		vision_model_inp, vision_model_out = ci_vision_model (X_train[i], i, 'classification')
 		vision_model_inputs.append(vision_model_inp)
 		vision_model_outputs.append(vision_model_out)
 	
