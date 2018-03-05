@@ -163,6 +163,12 @@ class BP:
 			data_new.append (t_new)
 		return np.array(data_new)
 		
+class Dummy:
+	def __init__(self):
+		pass
+		
+	def run (self, handler):
+		pass
 		
 def create_images (data, png_name = None):
 	from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
@@ -259,8 +265,8 @@ def create_seis_dataset (file_name, sorting_key, window, noisers, values, images
 			for i in range(nparts):
 				
 				# just sparser of data
-				if category != i % nhandlers:
-					continue
+				#if category != i % nhandlers:
+				#	continue
 
 				data = partss[category][i]
 				if data.shape != sh:
@@ -349,6 +355,29 @@ def create_bp_synth ():
 	(X_train, y_train, v_train), (X_test, y_test, v_test) = create_seis_dataset ( file_name ='data/prestack.sgy', 
 																				  sorting_key = 'original_field_record_number', 
 																				  window = [50, 0.5], 
+																				  noisers = noisers,
+																				  values = values,
+																				  images_dir = None # dont create images
+																				)
+																				
+	return (X_train, y_train, v_train), (X_test, y_test, v_test), values, labels
+	
+def create_dataset ():	
+	noisers = [		   
+			   Dummy(),
+			  ]
+
+	values = [
+				1
+			  ]
+
+	labels = [
+				'Dummy'
+			 ]
+
+	(X_train, y_train, v_train), (X_test, y_test, v_test) = create_seis_dataset ( file_name ='data/prestack.sgy', 
+																				  sorting_key = 'original_field_record_number', 
+																				  window = [20, 0.2], 
 																				  noisers = noisers,
 																				  values = values,
 																				  images_dir = None # dont create images
